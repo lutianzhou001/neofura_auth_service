@@ -57,21 +57,6 @@ export class AuthController {
       },
     },
   })
-  /*@ApiProduces('application/json; charset=utf-8')
-  @ApiResponse({
-    status: 200,
-    schema: {
-      example: {
-        success: false,
-        message: 'REGISTRATION.ERROR.GENERIC_ERROR',
-        data: {
-          response: 'REGISTRATION.USER_ALREADY_REGISTERED',
-          status: 403,
-          message: 'REGISTRATION.USER_ALREADY_REGISTERED',
-        },
-      },
-    },
-  })*/
   async register(@Body() createUserDto: CreateUserDto): Promise<any> {
     try {
       const newUser = new UserDto(await this.userService.createNewUser(createUserDto));

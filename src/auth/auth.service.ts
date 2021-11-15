@@ -1,6 +1,4 @@
 import * as bcrypt from 'bcryptjs';
-import * as nodemailer from 'nodemailer';
-import { default as config } from '../config';
 import { Injectable, HttpException, HttpStatus, HttpService } from '@nestjs/common';
 import { JWTService } from './jwt.service';
 import { Model } from 'mongoose';
@@ -10,14 +8,16 @@ import { EmailVerification } from './interfaces/emailverification.interface';
 import { ForgottenPassword } from './interfaces/forgottenpassword.interface';
 import { ConsentRegistry } from './interfaces/consentregistry.interface';
 import { InjectModel } from '@nestjs/mongoose';
+// tslint:disable-next-line:no-var-requires
+const request = require('request');
 
 @Injectable()
 export class AuthService {
   constructor(@InjectModel('User') private readonly userModel: Model<User>,
-    @InjectModel('EmailVerification') private readonly emailVerificationModel: Model<EmailVerification>,
-    @InjectModel('ForgottenPassword') private readonly forgottenPasswordModel: Model<ForgottenPassword>,
-    @InjectModel('ConsentRegistry') private readonly consentRegistryModel: Model<ConsentRegistry>,
-    private readonly jwtService: JWTService) { }
+              @InjectModel('EmailVerification') private readonly emailVerificationModel: Model<EmailVerification>,
+              @InjectModel('ForgottenPassword') private readonly forgottenPasswordModel: Model<ForgottenPassword>,
+              @InjectModel('ConsentRegistry') private readonly consentRegistryModel: Model<ConsentRegistry>,
+              private readonly jwtService: JWTService) { }
 
   async validateLogin(email, password) {
     const userFromDb = await this.userModel.findOne({ email });
@@ -25,8 +25,8 @@ export class AuthService {
 
     const isValidPass = await bcrypt.compare(password, userFromDb.password);
     if (isValidPass) {
-      if (!userFromDb.auth.email.valid) throw new HttpException('LOGIN.EMAIL_NOT_VERIFIED', HttpStatus.FORBIDDEN);
-      const accessToken = await this.jwtService.createToken(email, userFromDb.roles);
+      if (!userFromDb.auth) throw new HttpException('LOGIN.EMAIL_NOT_VERIFIED', HttpStatus.FORBIDDEN);
+      const accessToken = await this.jwtService.createToken(email, userFromDb.role);
       return { token: accessToken, user: new UserDto(userFromDb) };
     } else {
       throw new HttpException('LOGIN.PASSWORD_NOT_VALID', HttpStatus.UNAUTHORIZED);
@@ -35,12 +35,12 @@ export class AuthService {
 
   async validateAdminLogin(email, password) {
     const userFromDb = await this.userModel.findOne({ email });
-    if (!userFromDb || userFromDb.roles.indexOf('Admin') === -1) throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (userFromDb.role !== 'Admin') throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
 
     const isValidPass = await bcrypt.compare(password, userFromDb.password);
     if (isValidPass) {
-      if (!userFromDb.auth.email.valid) throw new HttpException('LOGIN.EMAIL_NOT_VERIFIED', HttpStatus.FORBIDDEN);
-      const accessToken = await this.jwtService.createToken(email, userFromDb.roles);
+      if (!userFromDb.auth) throw new HttpException('LOGIN.EMAIL_NOT_VERIFIED', HttpStatus.FORBIDDEN);
+      const accessToken = await this.jwtService.createToken(email, userFromDb.role);
       return { token: accessToken, user: new UserDto(userFromDb) };
     } else {
       throw new HttpException('LOGIN.PASSWORD_NOT_VALID', HttpStatus.UNAUTHORIZED);
@@ -56,7 +56,7 @@ export class AuthService {
         { email },
         {
           email,
-          emailToken: Math.floor(Math.random() * (900000)) + 100000, //Generate 6 digits number
+          emailToken: Math.floor(Math.random() * (900000)) + 100000,
           timestamp: new Date(),
         },
         { upsert: true },
@@ -95,7 +95,7 @@ export class AuthService {
         { email },
         {
           email,
-          newPasswordToken: Math.floor(Math.random() * (900000)) + 100000, //Generate 6 digits number,
+          newPasswordToken: Math.floor(Math.random() * (900000)) + 100000,
           timestamp: new Date(),
         },
         { upsert: true, new: true },
@@ -113,7 +113,7 @@ export class AuthService {
     if (emailVerif && emailVerif.email) {
       const userFromDb = await this.userModel.findOne({ email: emailVerif.email });
       if (userFromDb) {
-        userFromDb.auth.email.valid = true;
+        userFromDb.auth = true;
         const savedUser = await userFromDb.save();
         await emailVerif.remove();
         return !!savedUser;
@@ -124,57 +124,42 @@ export class AuthService {
   }
 
   async getForgottenPasswordModel(newPasswordToken: string): Promise<ForgottenPassword> {
-    return await this.forgottenPasswordModel.findOne({ newPasswordToken });
+    return this.forgottenPasswordModel.findOne({newPasswordToken});
+  }
+
+  async sendEmail(emailAddress: string, func: string, emailToken: string): Promise<boolean> {
+    let emailValue;
+    if (func === 'register') {
+      emailValue = '[neofura]Thanks for register, your verification token is ' + emailToken + ', don\'t tell this token to anybody!';
+    } else if (func === 'forgottenPassword') {
+      emailValue = '[neofura]You are changing your password, your verification token is ' + emailToken + ', don\'t tell this token to anybody!';
+    }
+    const options = {
+      method: 'POST',
+      url: 'https://rapidprod-sendgrid-v1.p.rapidapi.com/mail/send',
+      headers: {
+        'content-type': 'application/json',
+        'x-rapidapi-host': 'rapidprod-sendgrid-v1.p.rapidapi.com',
+        'x-rapidapi-key': 'ae2ad23146msh06a431323e86027p11a924jsn731ce3762748',
+        'useQueryString': true,
+      },
+      body: {
+        personalizations: [{to: [{email: emailAddress}], subject: 'NeoFura Service Email Verification'}],
+        from: {email: 'norelpy@neofura.com'},
+        content: [{type: 'text/plain', value: emailValue}],
+      },
+      json: true,
+    };
+
+    return await request(options, (error, response, body) => {
+      if (error) throw new Error(error);
+    });
   }
 
   async sendEmailVerification(email: string, func: string): Promise<boolean> {
     const model = await this.emailVerificationModel.findOne({ email });
-
     if (model && model.emailToken) {
-      const transporter = nodemailer.createTransport({
-        host: config.mail.host,
-        port: config.mail.port,
-        secure: config.mail.secure, // true for 465, false for other ports
-        auth: {
-          user: config.mail.user,
-          pass: config.mail.pass,
-        },
-      });
-
-      if (func === 'register') {
-        var mailOptions = {
-          from: '"Company" <' + config.mail.user + '>',
-          to: email, // list of receivers (separated by ,)
-          subject: 'Verify Email',
-          text: 'Verify Email',
-          html: '您好！<br><br>感谢您的注册<br><br>' +
-            '<p>【HUDEX】验证码为：' + model.emailToken + '，2分钟内有效。请勿向任何人包括客服提供验证码！</p>',  // html body
-        };
-      } else if (func === 'withdraw') {
-        var mailOptions = {
-          from: '"Company" <' + config.mail.user + '>',
-          to: email, // list of receivers (separated by ,)
-          subject: 'Verify Email',
-          text: 'Verify Email',
-          html: '您好！<br><br>您正在申请提现<br><br>' +
-            '<p>【HUDEX】验证码为：' + model.emailToken + '，2分钟内有效。请勿向任何人包括客服提供验证码！</p>',  // html body
-        };
-      }
-
-      const sent = await new Promise<boolean>(async function (resolve, reject) {
-        return await transporter.sendMail(mailOptions, async (error, info) => {
-          if (error) {
-            // tslint:disable-next-line: no-console
-            console.log('Message sent: %s', error);
-            return reject(false);
-          }
-          // tslint:disable-next-line: no-console
-          console.log('Message sent: %s', info.messageId);
-          resolve(true);
-        });
-      });
-
-      return sent;
+      return await this.sendEmail(email, 'register', model.emailToken);
     } else {
       throw new HttpException('REGISTER.USER_NOT_REGISTERED', HttpStatus.FORBIDDEN);
     }
@@ -183,7 +168,6 @@ export class AuthService {
   async checkPassword(email: string, password: string) {
     const userFromDb = await this.userModel.findOne({ email });
     if (!userFromDb) throw new HttpException('LOGIN.USER_NOT_FOUND', HttpStatus.NOT_FOUND);
-
     return await bcrypt.compare(password, userFromDb.password);
   }
 
@@ -194,40 +178,9 @@ export class AuthService {
     const tokenModel = await this.createForgottenPasswordToken(email);
 
     if (tokenModel && tokenModel.newPasswordToken) {
-      const transporter = nodemailer.createTransport({
-        host: config.mail.host,
-        port: config.mail.port,
-        secure: config.mail.secure, // true for 465, false for other ports
-        auth: {
-          user: config.mail.user,
-          pass: config.mail.pass,
-        },
-      });
-
-      const mailOptions = {
-        from: '"Company" <' + config.mail.user + '>',
-        to: email, // list of receivers (separated by ,)
-        subject: 'Frogotten Password',
-        text: 'Forgot Password',
-        html: 'Hi! <br><br> If you requested to reset your password<br><br>' +
-          '<a href=' + config.host.url + ':' + config.host.port + '/auth/email/reset-password/' + tokenModel.newPasswordToken + '>Click here</a>',  // html body
-      };
-
-      const sended = await new Promise<boolean>(async function (resolve, reject) {
-        return await transporter.sendMail(mailOptions, async (error, info) => {
-          if (error) {
-            console.log('Message sent: %s', error);
-            return reject(false);
-          }
-          console.log('Message sent: %s', info.messageId);
-          resolve(true);
-        });
-      });
-
-      return sended;
+      return await this.sendEmail(email, 'forgottenPassword', tokenModel.newPasswordToken);
     } else {
       throw new HttpException('REGISTER.USER_NOT_REGISTERED', HttpStatus.FORBIDDEN);
     }
   }
-
 }

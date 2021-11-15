@@ -1,4 +1,4 @@
-# Nestjs hudex-backend
+# NAS = Neofrura Auth Service
 This project is implemented with [Nestjs](https://nestjs.com/) v6.9.0, [MongoDB](https://www.mongodb.com/) and [PassportJs](http://www.passportjs.org)
 
 # Getting started

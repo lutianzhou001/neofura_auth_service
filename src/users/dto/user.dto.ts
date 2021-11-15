@@ -1,23 +1,16 @@
-import { SettingsDto } from './settings.dto';
-import { WalletDto } from './wallet.dto';
-
 export class UserDto {
   constructor(object: any) {
-    this.name = object.name;
-    this.surname = object.surname;
-    this.nickname = object.nickname;
+    this.auth = object.auth;
     this.email = object.email;
-    this.phone = object.phone;
-    this.birthdaydate = object.birthdaydate;
-    this.settings = new SettingsDto(object.settings);
-    this.wallet = object.wallet;
-  };
-  readonly name: string;
-  readonly surname: string;
-  readonly nickname: string;
+    this.status = object.status;
+    this.password = object.password;
+    this.level = object.level;
+    this.roles = object.roles;
+  }
+  readonly roles: string;
+  readonly level: number;
+  readonly auth: boolean;
+  readonly password: string;
+  readonly status: string;
   readonly email: string;
-  readonly phone: string;
-  readonly birthdaydate: Date;
-  settings: SettingsDto;
-  wallet: WalletDto;
 }

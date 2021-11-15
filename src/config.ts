@@ -22,12 +22,4 @@ export default {
         user: 'noreply@ses.nerdtech.space',
         pass: 'AZaz123456',
     },
-    oss: {
-        accessKeyId: 'LTAI4G5dQuu7HdXhJJwQgsXy',
-        accessKeySecret: 'bfzzCjfe20IUtuj1txP2n1tOYtyLdp',
-        arn: 'acs:ram::1273141742016971:role/hudexramoss',
-        expires: 900,
-        session: 'hudex',
-        bucket: 'hudex',
-    },
 };
