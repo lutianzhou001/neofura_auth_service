@@ -14,7 +14,7 @@ const authSource = config.db.authSource ? ('?authSource=' + config.db.authSource
 
 @Module({
   // tslint:disable-next-line: max-line-length
-  imports: [ScheduleModule.forRoot(), MongooseModule.forRoot('mongodb://' + userString + config.db.host + ':' + (config.db.port || 'pm2 ast27017') + '/' + config.db.database + authSource), UsersModule, AuthModule, TasksModule, ProjectModule],
+  imports: [ScheduleModule.forRoot(), MongooseModule.forRoot('mongodb://' + userString + config.db.host + ':' + (config.db.port || 'pm2 ast27017') + '/' + config.db.database + authSource, {useNewUrlParser: true}), UsersModule, AuthModule, TasksModule, ProjectModule],
   controllers: [AppController],
   providers: [AppService],
 })

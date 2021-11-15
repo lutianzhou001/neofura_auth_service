@@ -30,6 +30,7 @@ export class UsersService {
         createdUser.role = 'User';
         createdUser.status = 'NORMAL';
         createdUser.level = 1;
+        createdUser.auth = false;
         return await createdUser.save();
       } else if (!userRegistered.auth) {
         return userRegistered;

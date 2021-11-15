@@ -7,16 +7,12 @@ export class FrozeGuard implements CanActivate {
     constructor(private readonly reflector: Reflector) { }
 
     canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-        const roles = this.reflector.get<string[]>('roles', context.getHandler());
-        if (!roles) {
-            return true;
-        }
         const req = context.switchToHttp().getRequest();
         const user = req.user;
         let hasPermission = false;
-        if (user.accountstatus === 'NORMAL') {
+        if (user.status === 'NORMAL') {
             hasPermission = true;
         }
-        return user && user.roles && hasPermission;
+        return user && user.role && hasPermission;
     }
 }

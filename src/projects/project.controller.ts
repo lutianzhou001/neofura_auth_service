@@ -1,4 +1,4 @@
-import {Body, Controller, HttpException, HttpStatus, Patch, UseGuards, UseInterceptors} from '@nestjs/common';
+import {Body, Controller, HttpException, HttpStatus, Param, Patch, UseGuards, UseInterceptors} from '@nestjs/common';
 import {FrozeGuard} from '../common/guards/froze.guard';
 import {RolesGuard} from '../common/guards/roles.guard';
 import {ApiBody, ApiOperation} from '@nestjs/swagger';
@@ -20,7 +20,7 @@ export class ProjectController {
 
     constructor(private readonly projectService: ProjectService) {}
 
-    @Patch('projects/create')
+    @Patch('create')
     @UseGuards(FrozeGuard)
     @UseGuards(RolesGuard)
     @ApiOperation({description: '创建一个项目'})
@@ -28,8 +28,8 @@ export class ProjectController {
     @ApiBody({
         schema: {
             example: {
-                projectname: 'projects J',
-                projectintroduction: 'a defi application',
+                name: 'projects J',
+                introduction: 'a defi application',
             },
         },
     })
@@ -46,7 +46,26 @@ export class ProjectController {
         }
     }
 
-    @Patch('projects/update')
+    @Patch('list')
+    @UseGuards(FrozeGuard)
+    @UseGuards(RolesGuard)
+    @ApiOperation({description: '列出所有项目'})
+    @Roles('User')
+    @ApiBody({
+        schema: {
+            example: {},
+        },
+    })
+    async listProjects(@Param() params): Promise<IResponse> {
+        try {
+            const projects = await this.projectService.listProjects(params.email);
+            return new ResponseSuccess('PROFILE.LIST_SUCCESS', projects);
+        } catch (error) {
+            return new ResponseError('PROFILE.LIST_ERROR', error);
+        }
+    }
+
+    @Patch('update')
     @UseGuards(FrozeGuard)
     @UseGuards(RolesGuard)
     @ApiOperation({description: '更新一个项目'})
@@ -54,17 +73,17 @@ export class ProjectController {
     @ApiBody({
         schema: {
             example: {
-                projectname: 'projects J',
-                projectintroduction: 'a defi application',
+                name: 'projects X',
+                introduction: 'a defi application',
             },
         },
     })
     async updateProject(@Body() updateProjectDto: UpdateProjectDto): Promise<IResponse> {
         try {
-            const updated = new ProjectDto(await this.projectService.updateProject(updateProjectDto));
-            return new ResponseSuccess('UPDATE.PROJECT.SUCCESS');
+            const updated = await this.projectService.updateProject(updateProjectDto);
+            return new ResponseSuccess('UPDATE.PROJECT.SUCCESS', updated);
         } catch (error) {
-            return new ResponseError('UPDATE.PROJECT.ERROR');
+            return new ResponseError('UPDATE.PROJECT.ERROR', error);
         }
     }
 }

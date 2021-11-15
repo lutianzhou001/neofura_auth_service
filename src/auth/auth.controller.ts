@@ -1,6 +1,5 @@
 import { Controller, Post, HttpStatus, HttpCode, Get, Body, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { User } from '../users/interfaces/user.interface';
 import { ResponseSuccess, ResponseError } from '../common/dto/response.dto';
 import { IResponse } from '../common/interfaces/response.interface';
 import { CreateUserDto } from '../users/dto/create-user.dto';
@@ -9,7 +8,6 @@ import { UserDto } from '../users/dto/user.dto';
 import { UsersService } from '../users/users.service';
 import { ResetPasswordDto } from '../users/dto/reset-password.dto';
 import { ApiBody, ApiParam, ApiProduces, ApiResponse } from '@nestjs/swagger';
-import { map } from 'rxjs/operators';
 
 @Controller('auth')
 export class AuthController {
@@ -127,7 +125,7 @@ export class AuthController {
       },
     },
   })
-  public async setNewPassord(@Body() resetPassword: ResetPasswordDto): Promise<IResponse> {
+  public async setNewPassword(@Body() resetPassword: ResetPasswordDto): Promise<IResponse> {
     try {
       let isNewPasswordChanged: boolean = false;
       if (resetPassword.email && resetPassword.currentPassword) {
@@ -149,5 +147,4 @@ export class AuthController {
       return new ResponseError('RESET_PASSWORD.CHANGE_PASSWORD_ERROR', error);
     }
   }
-
 }

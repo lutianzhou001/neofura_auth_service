@@ -130,9 +130,11 @@ export class AuthService {
   async sendEmail(emailAddress: string, func: string, emailToken: string): Promise<boolean> {
     let emailValue;
     if (func === 'register') {
-      emailValue = '[neofura]Thanks for register, your verification token is ' + emailToken + ', don\'t tell this token to anybody!';
+      // tslint:disable-next-line:max-line-length
+      emailValue = '[neofura]Thanks for register, please click http://127.0.0.1:3000/auth/email/verify/' + emailToken + ' ,don\'t tell this token to anybody!';
     } else if (func === 'forgottenPassword') {
-      emailValue = '[neofura]You are changing your password, your verification token is ' + emailToken + ', don\'t tell this token to anybody!';
+      // tslint:disable-next-line:max-line-length
+      emailValue = '[neofura]You are changing your password, please click http://127.0.0.1:3000/auth/email/verify/' + emailToken + ' ,don\'t tell this token to anybody!';
     }
     const options = {
       method: 'POST',

@@ -5,6 +5,7 @@ import {CreateProjectDto} from './dto/create-project.dto';
 import {InjectModel} from '@nestjs/mongoose';
 import {Model} from 'mongoose';
 import {UpdateProjectDto} from './dto/update-project.dto';
+import * as http from 'http';
 // tslint:disable-next-line:no-var-requires
 const stringRandom = require('string-random');
 
@@ -35,10 +36,16 @@ export class ProjectService {
     }
 
     async updateProject(updateProject: UpdateProjectDto): Promise <Project> {
-        const projectFromDb = await this.projectModel.findOne(updateProject.email);
-        if (!projectFromDb) { throw new HttpException('COMMON.USER_NOT_FOUND', HttpStatus.NOT_FOUND); }
+        const projectFromDb = await this.projectModel.findOne({apikey: updateProject.apikey});
+        if (!projectFromDb) { throw new HttpException('COMMON.PROJECT_NOT_FOUND', HttpStatus.NOT_FOUND); }
         if (updateProject.name) projectFromDb.name = updateProject.name;
         if (updateProject.introduction) projectFromDb.introduction = updateProject.introduction;
         return await projectFromDb.save();
+    }
+
+    async listProjects(email: string): Promise <Project[]> {
+        const projects = await this.projectModel.find(email);
+        if (!projects) {throw new HttpException('COMMON.PROJECT_NOT_FIND', HttpStatus.NOT_FOUND); }
+        return projects;
     }
 }
